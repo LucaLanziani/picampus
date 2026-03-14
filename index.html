@@ -8,18 +8,25 @@
 </head>
 <body>
     <div class="container">
-        <h1>Ticket Classification System</h1>
+        <header class="app-header">
+            <h1>🎫 Ticket Classification System</h1>
+            <p class="subtitle">AI-powered ticket management and classification</p>
+        </header>
         
         <div class="input-section">
-            <textarea id="ticketInput" placeholder="Enter ticket description..." rows="4"></textarea>
+            <h2>Create New Ticket</h2>
+            <textarea id="ticketInput" placeholder="Describe your ticket here..." rows="4"></textarea>
             <div class="button-group">
-                <button id="voiceBtn" title="Click to start/stop recording">🎤 Voice</button>
-                <button id="submitBtn">Submit Ticket</button>
+                <button id="voiceBtn" title="Click to start/stop recording">🎤 Voice Input</button>
+                <button id="submitBtn" class="primary">Submit Ticket</button>
             </div>
         </div>
 
         <div class="tickets-section">
-            <h2>Tickets</h2>
+            <div class="section-header">
+                <h2>All Tickets</h2>
+                <span id="ticketCount" class="ticket-count">0 tickets</span>
+            </div>
             <div id="ticketsList"></div>
         </div>
     </div>

@@ -135,8 +135,11 @@ async function classifyTicket(description) {
 }
 
 function renderTickets() {
+    const ticketCount = document.getElementById('ticketCount');
+    ticketCount.textContent = `${tickets.length} ticket${tickets.length !== 1 ? 's' : ''}`;
+
     if (tickets.length === 0) {
-        ticketsList.innerHTML = '<p style="color: #999;">No tickets yet</p>';
+        ticketsList.innerHTML = '<p>No tickets yet. Create your first ticket above! 🎫</p>';
         return;
     }
 
