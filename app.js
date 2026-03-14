@@ -3,7 +3,84 @@ let ticketIdCounter = 1;
 
 const ticketInput = document.getElementById('ticketInput');
 const submitBtn = document.getElementById('submitBtn');
+const voiceBtn = document.getElementById('voiceBtn');
 const ticketsList = document.getElementById('ticketsList');
+
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+
+voiceBtn.addEventListener('click', async () => {
+    if (isRecording) {
+        stopRecording();
+    } else {
+        await startRecording();
+    }
+});
+
+async function startRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        // Use audio/webm;codecs=opus for better compatibility
+        const options = { mimeType: 'audio/webm;codecs=opus' };
+        mediaRecorder = new MediaRecorder(stream, options);
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+            audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            await transcribeAudio(audioBlob);
+            stream.getTracks().forEach(track => track.stop());
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+        voiceBtn.classList.add('recording');
+        voiceBtn.textContent = '⏹️ Stop';
+    } catch (error) {
+        console.error('Error accessing microphone:', error);
+        alert('Could not access microphone. Please grant permission.');
+    }
+}
+
+function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        isRecording = false;
+        voiceBtn.classList.remove('recording');
+        voiceBtn.textContent = '🎤 Voice';
+        voiceBtn.disabled = true;
+        voiceBtn.textContent = '⏳ Transcribing...';
+    }
+}
+
+async function transcribeAudio(audioBlob) {
+    try {
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'recording.webm');
+
+        const response = await fetch('/api/transcribe', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+        
+        if (data.text) {
+            ticketInput.value += (ticketInput.value ? ' ' : '') + data.text;
+        }
+    } catch (error) {
+        console.error('Transcription error:', error);
+        alert('Transcription failed. Please try again.');
+    } finally {
+        voiceBtn.disabled = false;
+        voiceBtn.textContent = '🎤 Voice';
+    }
+}
 
 submitBtn.addEventListener('click', async () => {
     const description = ticketInput.value.trim();

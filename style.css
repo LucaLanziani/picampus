@@ -38,7 +38,12 @@ h1 {
     margin-bottom: 10px;
 }
 
-#submitBtn {
+.button-group {
+    display: flex;
+    gap: 10px;
+}
+
+#submitBtn, #voiceBtn {
     background: #007bff;
     color: white;
     border: none;
@@ -48,13 +53,35 @@ h1 {
     font-size: 14px;
 }
 
-#submitBtn:hover {
+#submitBtn:hover, #voiceBtn:hover {
     background: #0056b3;
 }
 
-#submitBtn:disabled {
+#submitBtn:disabled, #voiceBtn:disabled {
     background: #ccc;
     cursor: not-allowed;
+}
+
+#voiceBtn {
+    background: #28a745;
+}
+
+#voiceBtn:hover {
+    background: #218838;
+}
+
+#voiceBtn.recording {
+    background: #dc3545;
+    animation: pulse 1.5s infinite;
+}
+
+#voiceBtn.recording:hover {
+    background: #c82333;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
 }
 
 .tickets-section h2 {

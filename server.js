@@ -1,8 +1,12 @@
 const express = require('express');
 const OpenAI = require('openai');
+const multer = require('multer');
+const fs = require('fs');
 
 const app = express();
 const port = 3000;
+
+const upload = multer({ dest: 'uploads/' });
 
 app.use(express.json());
 app.use(express.static('.'));
@@ -64,6 +68,36 @@ app.post('/api/translate', async (req, res) => {
     } catch (error) {
         console.error('Error:', error);
         res.status(500).json({ error: 'Translation failed' });
+    }
+});
+
+app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
+    try {
+        // Read the uploaded file
+        const audioBuffer = fs.readFileSync(req.file.path);
+        
+        // Create a new file with .webm extension for Whisper
+        const webmPath = req.file.path + '.webm';
+        fs.writeFileSync(webmPath, audioBuffer);
+        
+        const transcription = await openai.audio.transcriptions.create({
+            file: fs.createReadStream(webmPath),
+            model: 'whisper-1'
+        });
+
+        // Clean up files
+        fs.unlinkSync(req.file.path);
+        fs.unlinkSync(webmPath);
+        
+        res.json({ text: transcription.text });
+    } catch (error) {
+        console.error('Error:', error);
+        if (req.file) {
+            fs.unlinkSync(req.file.path);
+            const webmPath = req.file.path + '.webm';
+            if (fs.existsSync(webmPath)) fs.unlinkSync(webmPath);
+        }
+        res.status(500).json({ error: 'Transcription failed' });
     }
 });
 
