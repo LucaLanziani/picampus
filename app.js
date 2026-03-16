@@ -2,9 +2,12 @@ let tickets = [];
 let ticketIdCounter = 1;
 let activeFilter = 'all';
 let activeSort = 'newest';
+let currentPage = 1;
+const PAGE_SIZE = 9;
 
 const ticketInput = document.getElementById('ticketInput');
 const submitBtn = document.getElementById('submitBtn');
+const submitNoClassifyBtn = document.getElementById('submitNoClassifyBtn');
 const voiceBtn = document.getElementById('voiceBtn');
 const ticketsList = document.getElementById('ticketsList');
 const logoutBtn = document.getElementById('logoutBtn');
@@ -18,12 +21,14 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
         document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         activeFilter = btn.dataset.filter;
+        currentPage = 1;
         renderTickets();
     });
 });
 
 sortSelect.addEventListener('change', () => {
     activeSort = sortSelect.value;
+    currentPage = 1;
     renderTickets();
 });
 
@@ -136,24 +141,36 @@ submitBtn.addEventListener('click', async () => {
     if (!description) return;
 
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Creating...';
+    submitBtn.textContent = 'Classifying...';
 
     const classification = await classifyTicket(description);
-    
+    await createTicket(description, classification);
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Submit & Classify';
+});
+
+submitNoClassifyBtn.addEventListener('click', async () => {
+    const description = ticketInput.value.trim();
+    if (!description) return;
+
+    submitNoClassifyBtn.disabled = true;
+    await createTicket(description, 'other');
+    submitNoClassifyBtn.disabled = false;
+});
+
+async function createTicket(description, classification) {
     const response = await fetch('/api/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ description, classification })
     });
-    
+
     const ticket = await response.json();
     tickets.unshift(ticket);
     ticketInput.value = '';
     renderTickets();
-    
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Submit Ticket';
-});
+}
 
 async function loadTickets() {
     try {
@@ -185,6 +202,7 @@ async function classifyTicket(description) {
 
 function renderTickets() {
     const ticketCount = document.getElementById('ticketCount');
+    const pagination = document.getElementById('pagination');
 
     let filtered = activeFilter === 'all'
         ? [...tickets]
@@ -198,14 +216,21 @@ function renderTickets() {
         filtered.sort((a, b) => a.classification.localeCompare(b.classification));
     }
 
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    if (currentPage > totalPages) currentPage = totalPages;
+
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const paginated = filtered.slice(start, start + PAGE_SIZE);
+
     ticketCount.textContent = `${filtered.length} of ${tickets.length} ticket${tickets.length !== 1 ? 's' : ''}`;
 
     if (filtered.length === 0) {
         ticketsList.innerHTML = '<p class="empty-state">No tickets found. Try a different filter or create a new ticket 🎫</p>';
+        pagination.innerHTML = '';
         return;
     }
 
-    ticketsList.innerHTML = filtered.map(ticket => `
+    ticketsList.innerHTML = paginated.map(ticket => `
         <div class="ticket" data-ticket-id="${ticket.id}">
             <div class="ticket-header">
                 <span class="ticket-id">#${ticket.id}</span>
@@ -244,6 +269,38 @@ function renderTickets() {
     document.querySelectorAll('.reset-btn').forEach(b => b.addEventListener('click', handleReset));
     document.querySelectorAll('.edit-btn').forEach(b => b.addEventListener('click', handleEdit));
     document.querySelectorAll('.delete-btn').forEach(b => b.addEventListener('click', handleDelete));
+
+    // Render pagination
+    if (totalPages <= 1) {
+        pagination.innerHTML = '';
+        return;
+    }
+
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+            pages.push(i);
+        } else if (pages[pages.length - 1] !== '...') {
+            pages.push('...');
+        }
+    }
+
+    pagination.innerHTML = `
+        <button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} data-page="${currentPage - 1}">‹</button>
+        ${pages.map(p => p === '...'
+            ? `<span class="page-ellipsis">…</span>`
+            : `<button class="page-btn ${p === currentPage ? 'active' : ''}" data-page="${p}">${p}</button>`
+        ).join('')}
+        <button class="page-btn" ${currentPage === totalPages ? 'disabled' : ''} data-page="${currentPage + 1}">›</button>
+    `;
+
+    pagination.querySelectorAll('.page-btn:not([disabled])').forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentPage = parseInt(btn.dataset.page);
+            renderTickets();
+            document.querySelector('.tickets-section').scrollIntoView({ behavior: 'smooth' });
+        });
+    });
 }
 
 function escapeHtml(text) {
